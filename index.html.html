@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Beleza do Universo — Estrelas</title>
+  <meta name="description" content="Exposição fotográfica: Beleza do Universo e das Estrelas — mapa do céu interativo e galeria imersiva." />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Raleway:wght@300;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg-dark:#05040a;
+      --cosmic-blue:#07163a;
+      --cosmic-deep:#020317;
+      --gold:#d4af37;
+      --silver:#cfd8dc;
+      --violet:#7c4dff;
+      --glass: rgba(255,255,255,0.04);
+      --text: #e6eef8;
+      --accent-glow: 0 6px 30px rgba(124,77,255,0.12), 0 1px 6px rgba(212,175,55,0.06);
+    }
+
+    /* Reset */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--cosmic-blue) 60%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow-x:hidden;
+    }
+
+    /* Starfield canvas sits fixed */
+    canvas#starfield{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+    /* Header */
+    header{
+      position:fixed;top:0;left:0;right:0;height:72px;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;z-index:40;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(10,10,18,0.18), rgba(10,10,18,0.06));
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo .icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--violet),var(--gold));box-shadow:var(--accent-glow);}
+    .logo .icon svg{filter:drop-shadow(0 2px 8px rgba(124,77,255,0.18));}
+    .logo h1{font-family:'Raleway', serif;font-weight:600;font-size:1.05rem;letter-spacing:0.6px}
+
+    nav ul{display:flex;gap:18px;align-items:center;list-style:none}
+    nav a{color:var(--text);text-decoration:none;font-weight:500;opacity:0.95;padding:8px 10px;border-radius:6px;transition: all .28s cubic-bezier(.2,.9,.3,1)}
+    nav a:hover{transform:translateY(-2px);box-shadow:var(--accent-glow)}
+    nav a::after{content:'';display:block;height:2px;width:0;background:linear-gradient(90deg,var(--gold),var(--violet));transition:width .28s}
+    nav a:hover::after{width:100%}
+
+    /* Hero */
+    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:120px 20px;position:relative;z-index:5}
+    .hero-inner{max-width:1100px;text-align:center}
+    .kicker{color:var(--silver);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;font-size:0.78rem}
+    h2{font-family:'Raleway', serif;font-size:clamp(1.8rem,4.6vw,3.8rem);line-height:1.02;margin-bottom:18px}
+    p.lead{opacity:0.85;font-size:1.05rem;margin-bottom:28px}
+
+    .cta{display:inline-flex;align-items:center;gap:12px;padding:14px 22px;border-radius:999px;font-weight:700;background:linear-gradient(90deg, rgba(124,77,255,0.18), rgba(212,175,55,0.12));border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 30px rgba(124,77,255,0.06);cursor:pointer;transform:translateZ(0)}
+    .cta .neon{padding:8px 14px;border-radius:999px;background:linear-gradient(90deg,var(--violet),var(--gold));color:#05040a}
+
+    /* Nebula gradient behind hero */
+    .nebula{position:absolute;inset:0;z-index:-1;filter:blur(70px) saturate(130%);opacity:0.85;mix-blend-mode:screen}
+    .nebula svg{width:140%;height:140%;transform:translate(-10%, -10%)}
+
+    /* Section containers */
+    section{padding:72px 18px;position:relative;z-index:10}
+    .container{max-width:1100px;margin:0 auto}
+
+    /* Highlights cards */
+    .highlights{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(6px);transition:transform .45s cubic-bezier(.2,.9,.3,1), box-shadow .45s;overflow:hidden}
+    .card:hover{transform:translateY(-10px) rotate(-0.2deg);box-shadow:var(--accent-glow)}
+    .card .thumb{height:180px;border-radius:10px;margin-bottom:12px;background:linear-gradient(135deg,#071428, #2c0f3a);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.06);font-weight:700}
+    .card h3{font-size:1.05rem;margin-bottom:6px}
+    .card p{opacity:0.86;font-size:0.95rem}
+
+    /* Gallery */
+    .gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .gallery-item{position:relative;border-radius:10px;overflow:hidden;cursor:pointer}
+    .gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.2,.9,.3,1)}
+    .gallery-item:hover img{transform:scale(1.05) rotate(-0.5deg)}
+    .caption{position:absolute;left:12px;bottom:12px;background:linear-gradient(90deg, rgba(2,3,7,0.6), rgba(2,3,7,0.2));padding:8px 12px;border-radius:8px;font-size:0.9rem}
+
+    /* Lightbox */
+    .lightbox{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(2,3,7,0.92));display:none;align-items:center;justify-content:center;z-index:100}
+    .lightbox.active{display:flex}
+    .lightbox img{max-width:88vw;max-height:78vh;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,0.6)}
+    .lightbox .meta{margin-top:12px;color:var(--silver);text-align:center}
+
+    /* Timeline */
+    .timeline{display:flex;gap:18px;overflow-x:auto;padding:20px 8px;scroll-snap-type:x mandatory}
+    .timeline .phase{min-width:260px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);scroll-snap-align:center}
+    .timeline::-webkit-scrollbar{height:8px}
+    .timeline::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:999px}
+
+    /* Contact */
+    form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    form input, form textarea{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:12px;border-radius:8px;color:var(--text);outline:none}
+    form button{grid-column:span 2;padding:12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--violet),var(--gold));color:#05040a;font-weight:700;cursor:pointer}
+
+    /* Footer */
+    footer{padding:42px 18px;text-align:center;color:rgba(255,255,255,0.6)}
+
+    /* Responsive */
+    @media (max-width:980px){
+      .highlights{grid-template-columns:repeat(2,1fr)}
+      .gallery-grid{grid-template-columns:repeat(2,1fr)}
+      form{grid-template-columns:1fr}
+    }
+    @media (max-width:640px){
+      header{padding:10px 14px}
+      .hero{padding:100px 12px}
+      .highlights{grid-template-columns:1fr}
+      .gallery-grid{grid-template-columns:1fr}
+    }
+
+    /* Subtle glow stars for icons */
+    .icon-glow{filter:drop-shadow(0 4px 18px rgba(124,77,255,0.15))}
+
+    /* small utility */
+    .muted{opacity:0.75;font-size:0.95rem}
+
+  </style>
+</head>
+<body>
+
+  <canvas id="starfield"></canvas>
+
+  <header>
+    <div class="logo">
+      <div class="icon" aria-hidden>
+        <!-- Minimal star icon -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l1.9 4.85L19 8.1l-3.55 2.45L15.8 16 12 13.6 8.2 16l.35-5.45L5 8.1l5.1-.25L12 2z" fill="white" opacity="0.95"/></svg>
+      </div>
+      <h1>Beleza do Universo</h1>
+    </div>
+
+    <nav>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#galeria">Galeria</a></li>
+        <li><a href="#exploracao">Exploração</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <main>
+    <section id="home" class="hero">
+      <div class="nebula" aria-hidden>
+        <!-- Soft nebula gradient SVG -->
+        <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop offset="0%" stop-color="#0b1430" />
+              <stop offset="50%" stop-color="#3a0f47" />
+              <stop offset="100%" stop-color="#07163a" />
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#g1)"/>
+          <g opacity="0.8" mix-blend-mode="screen">
+            <ellipse cx="200" cy="160" rx="220" ry="130" fill="#5d2eff" opacity="0.18" />
+            <ellipse cx="620" cy="420" rx="300" ry="160" fill="#d4af37" opacity="0.06" />
+            <ellipse cx="420" cy="220" rx="210" ry="120" fill="#7c4dff" opacity="0.08" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="hero-inner container">
+        <div class="kicker">Exposição Fotográfica — 2ª Série</div>
+        <h2>Explore a beleza das estrelas do universo</h2>
+        <p class="lead">Cinco imagens. Um universo de histórias. Aponte seu celular, conecte-se e veja o mapa do céu por trás de cada foto.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="cta" id="startJourney"><span class="neon">Começar Jornada</span></button>
+          <button class="cta" id="toggleAudio" aria-pressed="false"><span class="neon" style="background:transparent;color:var(--text)">Ambiente</span></button>
+        </div>
+        <p class="muted" style="margin-top:18px">(Dica: abra no celular e aponte o QR nas fotos para ver cada mapa do céu.)</p>
+      </div>
+    </section>
+
+    <!-- HIGHLIGHTS -->
+    <section class="container">
+      <h3 style="margin-bottom:18px">Destaques</h3>
+      <div class="highlights">
+        <!-- Card 1 -->
+        <article class="card">
+          <div class="thumb">Constelações</div>
+          <h3>Constelações</h3>
+          <p>Formações antigas que contam histórias — cada agrupamento tem um nome, uma mitologia e uma geometria própria.</p>
+        </article>
+
+        <!-- Card 2 -->
+        <article class="card">
+          <div class="thumb">Nebulosas</div>
+          <h3>Nebulosas</h3>
+          <p>Berçários estelares, nuvens coloridas e turbilhões cósmicos — onde nasce a luz que vemos à distância.</p>
+        </article>
+
+        <!-- Card 3 -->
+        <article class="card">
+          <div class="thumb">Planetas</div>
+          <h3>Planetas</h3>
+          <p>Corpos que orbitam suas estrelas — alguns com atmosferas, outros silenciosos e gelados.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- GALLERY -->
+    <section id="galeria" class="container">
+      <h3 style="margin-bottom:18px">Galeria Imersiva</h3>
+      <p class="muted" style="margin-bottom:12px">Clique em qualquer imagem para ampliar. Cada foto tem um QR na exposição que abre o mapa do céu correspondente.</p>
+
+      <!-- Gallery grid -- placeholders: replace data-src with your images -->
+      <div class="gallery-grid" id="gallery">
+        <div class="gallery-item" data-caption="Betelgeuse — Um coração em chamas em Órion" data-fact="Betelgeuse é uma supergigante vermelha, cerca de 700 vezes maior que o Sol; pode explodir como supernova em até 100 mil anos." data-embed-url="https://stellarium-web.org/p/observations/68ce162bd0d2fa219e066946" tabindex="0">
+          <img loading="lazy" src="/mnt/data/169cb8e1-73d3-4634-9507-799fc933fb4a.png" alt="Betelgeuse" />
+          <div class="caption">Betelgeuse — Um coração em chamas em Órion</div>
+        </div>
+
+        <div class="gallery-item" data-caption="Antares — O olho vermelho do Escorpião" data-fact="Antares é uma supergigante vermelha a mais de 500 anos-luz; seu nome significa 'rival de Ares' por lembrar Marte." data-embed-url="https://stellarium-web.org/p/observations/68c0bc847a3d7039d9065bb7" tabindex="0">
+          <img loading="lazy" src="/mnt/data/6cd3316c-f66c-4d91-9231-a04c3fdc43d9.png" alt="Antares" />
+          <div class="caption">Antares — O olho vermelho do Escorpião</div>
+        </div>
+
+        <div class="gallery-item" data-caption="Sirius — Um diamante branco-azulado" data-fact="Sirius é a estrela mais brilhante do céu noturno e está a cerca de 8,6 anos-luz da Terra." data-embed-url="https://stellarium-web.org/p/observations/68ce165983c789ec84067cfb" tabindex="0">
+          <img loading="lazy" src="/mnt/data/5160679e-4a61-41d6-867e-969ce8e6c2f8.png" alt="Sirius" />
+          <div class="caption">Sirius — Um diamante branco-azulado</div>
+        </div>
+
+        <div class="gallery-item" data-caption="Vega — Um farol azul no firmamento" data-fact="Vega foi uma das primeiras estrelas fotografadas e serve como referência de brilho para outras estrelas." data-embed-url="https://stellarium-web.org/p/observations/68ce168e83c789ec84067cfc" tabindex="0">
+          <img loading="lazy" src="/mnt/data/a1e1814b-a727-448c-a4bd-f425a017c22f.png" alt="Vega" />
+          <div class="caption">Vega — Um farol azul no firmamento</div>
+        </div>
+
+        <div class="gallery-item" data-caption="Rigel — Um sol azul-gelo, jovem e poderoso" data-fact="Rigel é uma supergigante azul com luminosidade cerca de 120 mil vezes maior que a do Sol." data-embed-url="https://stellarium-web.org/p/observations/68ce16ea7a3d7039d9066103" tabindex="0">
+          <img loading="lazy" src="/mnt/data/30b947a3-0636-4ba0-8d4d-ecd7c6ace77d.png" alt="Rigel" />
+          <div class="caption">Rigel — Um sol azul-gelo, jovem e poderoso</div>
+        </div>
+
+      </div>
+
+      <!-- Lightbox -->
+      <div class="lightbox" id="lightbox" aria-hidden="true">
+        <div style="text-align:center">
+          <img id="lightboxImg" src="" alt="" />
+          <div class="meta">
+            <div id="lightboxCaption">Legenda</div>
+            <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
+              <button id="openMapBtn" class="cta" style="padding:8px 12px;font-size:0.9rem">Ver no céu</button>
+              <button id="closeLightbox" class="cta" style="padding:8px 12px;font-size:0.9rem">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- EXPLORAÇÃO -->
+    <section id="exploracao" class="container">
+      <h3 style="margin-bottom:18px">Exploração</h3>
+      <p class="muted" style="margin-bottom:18px">Linha do tempo: fases da vida de uma estrela — role horizontalmente para navegar.</p>
+
+      <div class="timeline" aria-label="Linha do tempo da estrela">
+        <div class="phase">
+          <h4>Formação</h4>
+          <p class="muted">Nuvens de gás e poeira colapsam — nascem protoestrelas.</p>
+        </div>
+        <div class="phase">
+          <h4>Sequência Principal</h4>
+          <p class="muted">Fusão de hidrogênio: a estrela brilha estável por bilhões de anos.</p>
+        </div>
+        <div class="phase">
+          <h4>Gigante/Rubro</h4>
+          <p class="muted">Combustíveis se esgotam — a estrela expande e muda de cor.</p>
+        </div>
+        <div class="phase">
+          <h4>Finais</h4>
+          <p class="muted">Supernova, anã branca ou buraco negro — o destino depende da massa.</p>
+        </div>
+      </div>
+
+      <!-- SVG animation placeholder -->
+      <div style="margin-top:24px">
+        <svg width="100%" height="160" viewBox="0 0 800 160" preserveAspectRatio="xMidYMid">
+          <defs>
+            <linearGradient id="gline" x1="0" x2="1"><stop offset="0%" stop-color="#7c4dff"/><stop offset="100%" stop-color="#ffd28a"/></linearGradient>
+          </defs>
+          <path d="M20 120 C160 20, 320 200, 480 60, 640 -20, 780 120" stroke="url(#gline)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="container">
+      <h3 style="margin-bottom:18px">Conecte-se com o infinito</h3>
+      <p class="muted" style="margin-bottom:12px">Se tiver dúvidas, curiosidades ou quiser o mapa configurado para sua foto, mande uma mensagem.</p>
+
+      <form id="contactForm" onsubmit="return false;">
+        <input type="text" id="name" placeholder="Seu nome" required />
+        <input type="email" id="email" placeholder="Seu e-mail" required />
+        <textarea id="msg" rows="4" placeholder="Mensagem" required></textarea>
+        <button id="sendBtn">Enviar</button>
+      </form>
+
+    </section>
+
+    <footer>
+      <p>Feito para o Encontro Cultural 2025 — 2ª série. &nbsp; • &nbsp; Toque nas estrelas — há segredos escondidos.</p>
+    </footer>
+
+  </main>
+
+  <!-- Map modal (iframe) -->
+  <div id="mapModal" class="lightbox" aria-hidden="true" style="padding:28px;">
+    <div style="width:95%;max-width:980px;margin:0 auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div id="mapTitle">Mapa do céu</div>
+        <button id="closeMap" class="cta" style="padding:8px 12px">Fechar</button>
+      </div>
+      <!-- IMPORTANT: generate the embed URL from VirtualSky (https://virtualsky.lco.global/embed/custom.html) or Stellarium Web and paste it into the data-embed-url attribute of each gallery-item. The script below will set the iframe src when a user clicks 'Ver no céu'. -->
+      <iframe id="mapFrame" src="about:blank" style="width:100%;height:60vh;border-radius:10px;border:1px solid rgba(255,255,255,0.04)" title="Mapa do céu"></iframe>
+    </div>
+  </div>
+
+  <!-- Optional ambient audio: add your track URL in the <audio> src attribute below -->
+  <!-- <audio id="ambientAudio" loop preload="none" src="/path/to/ambient.mp3"></audio> -->
+
+  <script>
+    /* ---------- Minimal JS for interactivity ---------- */
+
+    // Smooth scroll for nav
+    document.querySelectorAll('nav a').forEach(a=>{
+      a.addEventListener('click', e=>{
+        e.preventDefault();document.querySelector(a.getAttribute('href')).scrollIntoView({behavior:'smooth'});
+      })
+    });
+
+    // Start Journey button scrolls to gallery
+    document.getElementById('startJourney').addEventListener('click', ()=>{
+      document.getElementById('galeria').scrollIntoView({behavior:'smooth'});
+    });
+
+    // Lightbox behavior
+    const gallery = document.getElementById('gallery');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+    const openMapBtn = document.getElementById('openMapBtn');
+    let currentEmbed = '';
+
+    gallery.querySelectorAll('.gallery-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const img = item.querySelector('img');
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt || '';
+        lightboxCaption.textContent = item.dataset.caption || '';
+        currentEmbed = item.dataset.embedUrl || '';
+        lightbox.classList.add('active');
+        lightbox.setAttribute('aria-hidden','false');
+      });
+
+      // keyboard accessibility
+      item.addEventListener('keydown', e=>{ if(e.key === 'Enter') item.click(); });
+    });
+
+    document.getElementById('closeLightbox').addEventListener('click', ()=>{ lightbox.classList.remove('active'); lightbox.setAttribute('aria-hidden','true'); });
+    lightbox.addEventListener('click', e=>{ if(e.target === lightbox) { lightbox.classList.remove('active'); lightbox.setAttribute('aria-hidden','true'); }});
+
+    openMapBtn.addEventListener('click', ()=>{
+      // Open map modal and set iframe src from the data-embed-url on the clicked item
+      const mapModal = document.getElementById('mapModal');
+      const mapFrame = document.getElementById('mapFrame');
+      const mapTitle = document.getElementById('mapTitle');
+      mapModal.classList.add('active'); mapModal.setAttribute('aria-hidden','false');
+      if(currentEmbed){ mapFrame.src = currentEmbed; mapTitle.textContent = lightboxCaption.textContent; }
+      else { mapFrame.src = 'about:blank'; mapTitle.textContent = 'Nenhum mapa configurado (cole o embed do VirtualSky no atributo data-embed-url).'; }
+    });
+
+    document.getElementById('closeMap').addEventListener('click', ()=>{ const m=document.getElementById('mapModal'); m.classList.remove('active'); m.setAttribute('aria-hidden','true'); document.getElementById('mapFrame').src='about:blank'; });
+
+    // Contact form - no backend: fallback to mailto
+    document.getElementById('sendBtn').addEventListener('click', ()=>{
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const msg = document.getElementById('msg').value.trim();
+      if(!name||!email||!msg){ alert('Preencha todos os campos.'); return; }
+      const subject = encodeURIComponent('Contato — Exposição Estrelas');
+      const body = encodeURIComponent(`Nome: ${name}\nEmail: ${email}\n\n${msg}`);
+      window.location.href = `mailto:seuemail@exemplo.com?subject=${subject}&body=${body}`;
+    });
+
+    /* ---------- Starfield canvas (lightweight) ---------- */
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
+    let w=canvas.width = innerWidth; let h=canvas.height = innerHeight; window.addEventListener('resize', ()=>{ w=canvas.width=innerWidth; h=canvas.height=innerHeight; initStars(); });
+
+    let stars=[];
+    function initStars(){
+      stars = []; const count = Math.floor((w*h)/12000);
+      for(let i=0;i<count;i++){ stars.push({ x:Math.random()*w, y:Math.random()*h, r:Math.random()*1.2+0.2, alpha:Math.random()*0.9+0.1, twinkle:Math.random()*0.02+0.005, phase:Math.random()*Math.PI*2}); }
+    }
+    initStars();
+    let t=0;
+    function render(){
+      ctx.clearRect(0,0,w,h);
+      // subtle gradient overlay
+      const g = ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'rgba(2,3,7,0.85)'); g.addColorStop(1,'rgba(7,22,58,0.18)'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      // draw stars
+      for(const s of stars){
+        const a = s.alpha + Math.sin(t*s.twinkle + s.phase)*0.35*s.twinkle*30;
+        ctx.beginPath(); ctx.fillStyle = `rgba(255,255,255,${Math.max(0,Math.min(1,a))})`; ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+      }
+      t+=0.015;
+      requestAnimationFrame(render);
+    }
+    render();
+
+    /* ---------- Ambient toggle (if audio provided) ---------- */
+    const toggleAudioBtn = document.getElementById('toggleAudio');
+    toggleAudioBtn.addEventListener('click', ()=>{
+      const audio = document.getElementById('ambientAudio');
+      if(!audio){ alert('Adicione um arquivo de áudio no <audio id="ambientAudio"> (veja o código).'); return; }
+      if(audio.paused){ audio.play(); toggleAudioBtn.setAttribute('aria-pressed','true'); } else { audio.pause(); toggleAudioBtn.setAttribute('aria-pressed','false'); }
+    });
+
+    /* ---------- Easter egg: click stars in header icon (demo) ---------- */
+    document.querySelector('.logo .icon').addEventListener('click', ()=>{
+      alert('Easter egg: As estrelas guardam histórias. Deseja ver um fato?\n\nFato: A luz que vemos de muitas estrelas começou sua jornada há milhares de anos.');
+    });
+
+    // Accessibility: escape closes modals
+    document.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){
+        if(lightbox.classList.contains('active')){ lightbox.classList.remove('active'); lightbox.setAttribute('aria-hidden','true'); }
+        const m=document.getElementById('mapModal'); if(m.classList.contains('active')){ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); document.getElementById('mapFrame').src='about:blank'; }
+      }
+    });
+
+    /* ---------- Notes for you (do not remove): ----------
+      1) Substitua as imagens "data:image/svg..." por URLs ou caminhos das 5 fotos finais.
+      2) Para cada .gallery-item, cole o link de embed do VirtualSky (ou Stellarium Web) em data-embed-url="PASTE_EMBED_URL_HERE".
+         - Exemplos de onde gerar embed: https://virtualsky.lco.global/embed/custom.html
+      3) Se quiser ativar áudio ambiente, descomente o elemento <audio id="ambientAudio" src="..."> no HTML e coloque o caminho do arquivo.
+      4) Para hospedar: faça upload do arquivo .html e das imagens no GitHub Pages ou Netlify.
+    */
+
+  </script>
+
+</body>
+</html>
